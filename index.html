@@ -50,6 +50,19 @@
     justify-content: center;
   }
 
+  .menu-bottom-second {
+    position: fixed;
+    bottom: 50px;
+    left: 0;
+    right: 0;
+    height: 50px;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
   .menu-bottom {
     position: fixed;
     bottom: 0;
@@ -227,6 +240,11 @@
   </div>
 
   
+  <div class="menu-bottom-second">
+    <button id="zoom-in-btn">+</button>
+    <button id="zoom-out-btn">-</button>
+  </div>
+  
   <div class="menu-bottom">
     <button id="prev-btn">上一個點</button>
     <button id="next-btn">下一個點</button>
@@ -272,11 +290,20 @@
 
   document.addEventListener('DOMContentLoaded', function() {
             const neckContainer = document.getElementById('neck-container');
+            const neckContainerWrapper = document.querySelector('.neck-container-wrapper');
             const currentPointElement = document.getElementById('current-point');
             const statusElement = document.getElementById('status');
             const prevBtn = document.getElementById('prev-btn');
             const nextBtn = document.getElementById('next-btn');
             const resetBtn = document.getElementById('reset-btn');
+            const zoomInBtn = document.getElementById('zoom-in-btn');
+            const zoomOutBtn = document.getElementById('zoom-out-btn');
+            
+            // 縮放比例變量
+            let currentScale = 1;
+            const minScale = 0.5;
+            const maxScale = 2.0;
+            const scaleStep = 0.1;
             
             // 五个点的初始位置（相对于容器的比例位置）
             const pointPositions = [
@@ -431,6 +458,33 @@
                 setDraggablePoint(0);
                 nextBtn.disabled = false;
                 statusElement.textContent = "已重置，請拖動第一個點";
+                // 重置縮放
+                applyScale(1);
+            });
+            
+            // 縮放功能
+            function applyScale(scale) {
+                neckContainerWrapper.style.transform = `scale(${scale})`;
+                // 放大過程中, neck-container-wrapper 內的圖片可與螢幕上方都保持距離 10%
+                neckContainerWrapper.style.transformOrigin = 'center top';
+                neckContainerWrapper.style.marginTop = '10%';
+                currentScale = scale;
+                
+                // 更新按鈕狀態
+                zoomInBtn.disabled = (scale >= maxScale);
+                zoomOutBtn.disabled = (scale <= minScale);
+            }
+            
+            // 放大按鈕
+            zoomInBtn.addEventListener('click', function() {
+                const newScale = Math.min(currentScale + scaleStep, maxScale);
+                applyScale(newScale);
+            });
+            
+            // 縮小按鈕
+            zoomOutBtn.addEventListener('click', function() {
+                const newScale = Math.max(currentScale - scaleStep, minScale);
+                applyScale(newScale);
             });
             
             // 初始化
