@@ -74,6 +74,10 @@
     display: flex;
     flex-direction: column;
   }
+  
+  .menu-left.hidden {
+    transform: translateX(-100%);
+  }
 
   /* --- content --- */
   .content {
@@ -88,7 +92,7 @@
 
   /* --- 漢堡按鈕 --- */
   .hamburger {
-    display: none;
+    display: flex;
     position: fixed;
     top: 15px;
     left: 15px;
@@ -118,9 +122,6 @@
     .content {
       margin-left: 0;
     }
-    .hamburger {
-      display: flex;
-    }
   }
 
 
@@ -130,28 +131,29 @@
         .neck-container-wrapper {
             position: relative;
             width: 100%;
-            height: 600px;
+            max-width: 600px;
+            aspect-ratio: 1 / 2;
             border: 2px solid #3498db;
             border-radius: 10px;
             overflow: hidden;
             background-color: rgba(255, 255, 255, 0.8);
             background-image: url('./頸部計算/病患側面.png');
             background-size: cover;
-            background-position: center;
+            background-position: top;
             background-repeat: no-repeat;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
         }
         
         #neck-container {
             position: absolute;
-            width: 300px;
-            height: 300px;
+            width: 80%;
+            aspect-ratio: 1 / 1.5;
             background-color: rgba(236, 240, 241, 0.7);
             opacity: 0.7;
             border: 2px dashed #7f8c8d;
             border-radius: 10px;
-            top: 30px;
-            left: 10px;
+            top: 5%;
+            left: 10%;
             cursor: move;
             touch-action: none;
             user-select: none;
@@ -236,12 +238,26 @@
   const menuLeft = document.getElementById('menuLeft');
 
   hamburger.addEventListener('click', () => {
-    menuLeft.classList.toggle('open');
+    // 檢查螢幕寬度
+    if (window.innerWidth <= 800) {
+      // 小螢幕：切換open class
+      menuLeft.classList.toggle('open');
+    }
+    // 大螢幕：切換hidden class
+    else {
+      menuLeft.classList.toggle('hidden');
+      // 同時調整content的margin
+      if (menuLeft.classList.contains('hidden')) {
+        content.style.marginLeft = '0';
+      } else {
+        content.style.marginLeft = '30%';
+      }
+    }
   });
 
 
-  
-        document.addEventListener('DOMContentLoaded', function() {
+
+  document.addEventListener('DOMContentLoaded', function() {
             const neckContainer = document.getElementById('neck-container');
             const currentPointElement = document.getElementById('current-point');
             const statusElement = document.getElementById('status');
@@ -251,11 +267,11 @@
             
             // 五个点的初始位置（相对于容器的比例位置）
             const pointPositions = [
-                { x: 0.5, y: 0.2 },  // 顶部
-                { x: 0.3, y: 0.5 },  // 左侧
-                { x: 0.7, y: 0.5 },  // 右侧
-                { x: 0.4, y: 0.8 },  // 左下
-                { x: 0.6, y: 0.8 }   // 右下
+                { x: 0.3, y: 0.1 },  // 顶部
+                { x: 0.35, y: 0.2 },  // 左侧
+                { x: 0.37, y: 0.3 },  // 右侧
+                { x: 0.3, y: 0.41 },  // 左下
+                { x: 0.24, y: 0.52 }   // 右下
             ];
             
             let points = [];
