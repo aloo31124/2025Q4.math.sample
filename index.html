@@ -255,6 +255,19 @@
     }
   });
 
+  
+
+  // 點擊選單以外的區域關閉選單（僅在小螢幕且選單開啟時）
+  document.addEventListener('click', (e) => {
+    // 只在小螢幕且選單開啟時處理
+    if (window.innerWidth <= 800 && menuLeft.classList.contains('open')) {
+      // 如果點擊的不是選單或漢堡按鈕或它們的子元素
+      if (!menuLeft.contains(e.target) && !hamburger.contains(e.target)) {
+        menuLeft.classList.remove('open');
+      }
+    }
+  });
+
 
 
   document.addEventListener('DOMContentLoaded', function() {
