@@ -175,7 +175,7 @@
           border-radius: 10px;
           top: 5%;
           left: 10%;
-          cursor: move;
+          /* cursor: move; */
           /*touch-action: none;
           user-select: none;*/
           z-index: 2;
@@ -238,6 +238,43 @@
           z-index: 1;
           transform-origin: left center;
           pointer-events: none;
+      }
+
+      /* 特殊線條樣式 */
+      .special-line {
+          position: absolute;
+          background: #2ecc71;
+          z-index: 1;
+          pointer-events: none;
+      }
+
+      .horizontal-line {
+          height: 2px;
+          border-top: 2px solid #2ecc71;
+      }
+
+      .vertical-line {
+          width: 2px;
+          border-left: 2px solid #2ecc71;
+      }
+
+      .diagonal-line {
+          height: 2px;
+          border-top: 2px solid #2ecc71;
+          transform-origin: left center;
+      }
+
+      /* 交點樣式 */
+      .intersection-point {
+          position: absolute;
+          width: 12px;
+          height: 12px;
+          border: 2px solid #f39c12;
+          background-color: #f39c12;
+          border-radius: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 3;
+          box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
       }
 
       
@@ -353,7 +390,6 @@ document.addEventListener('DOMContentLoaded', function() {
           
           // 初始化点
           function initPoints() {
-              // 先清除所有內容，包括點和連接線
               neckContainer.innerHTML = '';
               points = [];
               
@@ -497,92 +533,214 @@ document.addEventListener('DOMContentLoaded', function() {
               if (statusElement) {
                   statusElement.textContent = "已重置，請拖動第一個點";
               }
-              // 清除連接線
-              clearConnectionLines();
+              // 清除所有線條和交點
+              clearAllLines();
           });
-          
+
           // 計算按鈕
           calculateBtn.addEventListener('click', function() {
-              calculateDistances();
+              calculateSpecialLines();
           });
 
-          // 清除連接線
-          function clearConnectionLines() {
-              const existingLines = neckContainer.querySelectorAll('.connection-line');
-              existingLines.forEach(line => line.remove());
+          // 清除所有線條和交點
+          function clearAllLines() {
+              const existingLines = neckContainer.querySelectorAll('.connection-line, .special-line, .intersection-point');
+              existingLines.forEach(element => element.remove());
           }
 
-          // 計算距離和繪製連接線
-          function calculateDistances() {
-              // 清除之前的連接線
-              clearConnectionLines();
+          // 計算特殊線條和交點
+          function calculateSpecialLines() {
+              // 清除之前的線條和交點
+              clearAllLines();
 
-              const distances = [];
-              const angles = [];
-              const results = [];
-
-              // 計算每兩個相鄰點之間的距離、角度並繪製連接線
-              for (let i = 0; i < points.length - 1; i++) {
-                  const point1 = points[i];
-                  const point2 = points[i + 1];
-
-                  // 直接從點的 style 屬性獲取位置（這些是相對於容器的實際位置）
-                  const x1 = parseFloat(point1.style.left) || (parseFloat(point1.style.left.replace('%', '')) / 100 * neckContainer.offsetWidth);
-                  const y1 = parseFloat(point1.style.top) || (parseFloat(point1.style.top.replace('%', '')) / 100 * neckContainer.offsetHeight);
-                  const x2 = parseFloat(point2.style.left) || (parseFloat(point2.style.left.replace('%', '')) / 100 * neckContainer.offsetWidth);
-                  const y2 = parseFloat(point2.style.top) || (parseFloat(point2.style.top.replace('%', '')) / 100 * neckContainer.offsetHeight);
-
-                  // 轉換百分比為像素值
-                  const actualX1 = point1.style.left.includes('%') ? (parseFloat(point1.style.left) / 100) * neckContainer.offsetWidth : parseFloat(point1.style.left);
-                  const actualY1 = point1.style.top.includes('%') ? (parseFloat(point1.style.top) / 100) * neckContainer.offsetHeight : parseFloat(point1.style.top);
-                  const actualX2 = point2.style.left.includes('%') ? (parseFloat(point2.style.left) / 100) * neckContainer.offsetWidth : parseFloat(point2.style.left);
-                  const actualY2 = point2.style.top.includes('%') ? (parseFloat(point2.style.top) / 100) * neckContainer.offsetHeight : parseFloat(point2.style.top);
-
-                  // 計算實際距離（以原始尺寸為基準）
-                  const actualDistance = Math.sqrt(Math.pow(actualX2 - actualX1, 2) + Math.pow(actualY2 - actualY1, 2));
-                  distances.push(actualDistance);
-
-                  // 計算角度（相對於水平軸的角度，以度為單位）
-                  const angleRadians = Math.atan2(actualY2 - actualY1, actualX2 - actualX1);
-                  const angleDegrees = angleRadians * 180 / Math.PI;
-                  // 將負角度轉換為正角度（0-360度範圍）
-                  const normalizedAngle = angleDegrees < 0 ? angleDegrees + 360 : angleDegrees;
-                  angles.push(normalizedAngle);
-
-                  // 繪製連接線（使用容器內的實際位置）
-                  drawLine(actualX1, actualY1, actualX2, actualY2);
-
-                  // 準備結果文字
-                  results.push(`點${i + 1}到點${i + 2}: ${actualDistance.toFixed(2)}px, 角度: ${normalizedAngle.toFixed(1)}°`);
+              // 獲取所有點的位置
+              const pointPositions = [];
+              for (let i = 0; i < points.length; i++) {
+                  const point = points[i];
+                  const actualX = point.style.left.includes('%') ? 
+                      (parseFloat(point.style.left) / 100) * neckContainer.offsetWidth : 
+                      parseFloat(point.style.left);
+                  const actualY = point.style.top.includes('%') ? 
+                      (parseFloat(point.style.top) / 100) * neckContainer.offsetHeight : 
+                      parseFloat(point.style.top);
+                  
+                  pointPositions.push({
+                      x: actualX, // 點已經通過 CSS transform: translate(-50%, -50%) 居中，不需要額外偏移
+                      y: actualY
+                  });
               }
 
-              // 顯示計算結果
-              alert("計算結果:\n" + results.join('\n'));
+              // 1. 畫點1與點4的連線
+              drawDiagonalLine(pointPositions[0], pointPositions[3], 'line14');
+
+              // 2. 畫點3的水平線
+              const horizontalLine = drawHorizontalLine(pointPositions[2]);
+
+              // 3. 畫點5的垂直線
+              const verticalLine = drawVerticalLine(pointPositions[4]);
+
+              // 4. 計算水平線3與線14的交點（點6）
+              const intersection6 = calculateLineIntersection(
+                  pointPositions[2], 'horizontal',
+                  pointPositions[0], pointPositions[3]
+              );
+              if (intersection6) {
+                  drawIntersectionPoint(intersection6, '6');
+              }
+
+              // 5. 計算水平線3與垂直線5的交點（點7）
+              const intersection7 = {
+                  x: pointPositions[4].x,
+                  y: pointPositions[2].y
+              };
+              drawIntersectionPoint(intersection7, '7');
+
+              // 6. 畫點5與點6的連線
+              if (intersection6) {
+                  drawDiagonalLine(pointPositions[4], intersection6, 'line56');
+                  
+                  // 7. 計算角度756（點7-點5-點6的夾角）
+                  const angle756 = calculateAngle756(intersection7, pointPositions[4], intersection6);
+                  
+                  // 8. 計算線75和線56的距離
+                  const distance75 = calculateDistance(intersection7, pointPositions[4]);
+                  const distance56 = calculateDistance(pointPositions[4], intersection6);
+                  
+                  // 顯示所有計算結果
+                  const results = [
+                      `角度756 (點7-點5-點6): ${angle756.toFixed(1)}°`,
+                      `線75距離: ${distance75.toFixed(2)}px`,
+                      `線56距離: ${distance56.toFixed(2)}px`
+                  ];
+                  alert("計算結果:\n" + results.join('\n'));
+              }
           }
 
-          // 繪製連接線
-          function drawLine(x1, y1, x2, y2) {
+          // 畫對角線
+          function drawDiagonalLine(point1, point2, className) {
               const line = document.createElement('div');
-              line.className = 'connection-line';
+              line.className = `special-line diagonal-line ${className}`;
 
-              // 調整到點的中心位置（點的大小是20px，所以中心偏移10px）
-              const centerX1 = x1 + 10;
-              const centerY1 = y1 + 10;
-              const centerX2 = x2 + 10;
-              const centerY2 = y2 + 10;
+              const length = Math.sqrt(Math.pow(point2.x - point1.x, 2) + Math.pow(point2.y - point1.y, 2));
+              const angle = Math.atan2(point2.y - point1.y, point2.x - point1.x) * 180 / Math.PI;
 
-              // 計算線條長度和角度
-              const length = Math.sqrt(Math.pow(centerX2 - centerX1, 2) + Math.pow(centerY2 - centerY1, 2));
-              const angle = Math.atan2(centerY2 - centerY1, centerX2 - centerX1) * 180 / Math.PI;
-
-              // 設定線條樣式
-              line.style.left = centerX1 + 'px';
-              line.style.top = centerY1 + 'px';
+              line.style.left = point1.x + 'px';
+              line.style.top = point1.y + 'px';
               line.style.width = length + 'px';
               line.style.transform = `rotate(${angle}deg)`;
 
-              // 添加到容器
               neckContainer.appendChild(line);
+              return line;
+          }
+
+          // 畫水平線
+          function drawHorizontalLine(point) {
+              const line = document.createElement('div');
+              line.className = 'special-line horizontal-line';
+
+              line.style.left = '0px';
+              line.style.top = point.y + 'px';
+              line.style.width = neckContainer.offsetWidth + 'px';
+
+              neckContainer.appendChild(line);
+              return line;
+          }
+
+          // 畫垂直線
+          function drawVerticalLine(point) {
+              const line = document.createElement('div');
+              line.className = 'special-line vertical-line';
+
+              line.style.left = point.x + 'px';
+              line.style.top = '0px';
+              line.style.height = neckContainer.offsetHeight + 'px';
+
+              neckContainer.appendChild(line);
+              return line;
+          }
+
+          // 計算線段交點
+          function calculateLineIntersection(horizontalPoint, horizontalType, diagonalPoint1, diagonalPoint2) {
+              if (horizontalType === 'horizontal') {
+                  // 水平線的 y 坐標
+                  const y = horizontalPoint.y;
+                  
+                  // 對角線的參數方程
+                  const dx = diagonalPoint2.x - diagonalPoint1.x;
+                  const dy = diagonalPoint2.y - diagonalPoint1.y;
+                  
+                  if (dy === 0) return null; // 對角線也是水平線，無交點
+                  
+                  // 計算參數 t
+                  const t = (y - diagonalPoint1.y) / dy;
+                  
+                  if (t >= 0 && t <= 1) {
+                      // 交點在對角線段內
+                      const x = diagonalPoint1.x + t * dx;
+                      return { x, y };
+                  }
+              }
+              return null;
+          }
+
+          // 畫交點
+          function drawIntersectionPoint(point, label) {
+              const intersectionPoint = document.createElement('div');
+              intersectionPoint.className = 'intersection-point';
+              intersectionPoint.textContent = label;
+              intersectionPoint.style.left = point.x + 'px';
+              intersectionPoint.style.top = point.y + 'px';
+              intersectionPoint.style.color = 'white';
+              intersectionPoint.style.fontSize = '10px';
+              intersectionPoint.style.fontWeight = 'bold';
+              intersectionPoint.style.display = 'flex';
+              intersectionPoint.style.alignItems = 'center';
+              intersectionPoint.style.justifyContent = 'center';
+
+              neckContainer.appendChild(intersectionPoint);
+          }
+
+          // 計算角度756（點7-點5-點6的夾角）
+          function calculateAngle756(point7, point5, point6) {
+              // 計算向量57 (從點5到點7)
+              const vector57 = {
+                  x: point7.x - point5.x,
+                  y: point7.y - point5.y
+              };
+              
+              // 計算向量56 (從點5到點6)
+              const vector56 = {
+                  x: point6.x - point5.x,
+                  y: point6.y - point5.y
+              };
+              
+              // 計算兩個向量的夾角
+              const dotProduct = vector57.x * vector56.x + vector57.y * vector56.y;
+              const magnitude57 = Math.sqrt(vector57.x * vector57.x + vector57.y * vector57.y);
+              const magnitude56 = Math.sqrt(vector56.x * vector56.x + vector56.y * vector56.y);
+              
+              // 避免除零錯誤
+              if (magnitude57 === 0 || magnitude56 === 0) {
+                  return 0;
+              }
+              
+              // 計算角度（弧度）
+              const cosAngle = dotProduct / (magnitude57 * magnitude56);
+              // 確保cosAngle在[-1, 1]範圍內，避免浮點誤差
+              const clampedCosAngle = Math.max(-1, Math.min(1, cosAngle));
+              const angleRadians = Math.acos(clampedCosAngle);
+              
+              // 轉換為度數
+              const angleDegrees = angleRadians * 180 / Math.PI;
+              
+              return angleDegrees;
+          }
+
+          // 計算兩點之間的距離
+          function calculateDistance(point1, point2) {
+              const dx = point2.x - point1.x;
+              const dy = point2.y - point1.y;
+              return Math.sqrt(dx * dx + dy * dy);
           }
           
           // 縮放功能
@@ -614,6 +772,7 @@ document.addEventListener('DOMContentLoaded', function() {
           // 初始化縮放按鈕狀態
           applyScale(1);
           
+          /*
           // 添加容器拖拽功能
           let containerDragging = false;
           let containerStartX, containerStartY;
@@ -663,6 +822,7 @@ document.addEventListener('DOMContentLoaded', function() {
               document.removeEventListener('mouseup', stopContainerDrag);
               document.removeEventListener('touchend', stopContainerDrag);
           }
+          */
           
       });
 </script>
