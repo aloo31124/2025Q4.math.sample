@@ -29,6 +29,13 @@
           box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       }
 
+      button:disabled {
+          background-color: #bdc3c7;
+          color: #7f8c8d;
+          cursor: not-allowed;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
       /* --- 公共樣式 --- */
       .menu-top, .menu-bottom, .menu-bottom-second, .menu-left {
           background: #3DA5FF;
@@ -185,6 +192,14 @@
           cursor: pointer;
           box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
           transition: transform 0.2s, box-shadow 0.2s;
+          /* 添加數字顯示樣式 */
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-size: 12px;
+          font-weight: bold;
+          text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
       }
       
       .point.draggable {
@@ -214,6 +229,16 @@
           }
       }
 
+      /* 連接線樣式 */
+      .connection-line {
+          position: absolute;
+          height: 2px;
+          background: transparent;
+          border-top: 2px dashed #e74c3c;
+          z-index: 1;
+          transform-origin: left center;
+          pointer-events: none;
+      }
 
       
 </style>
@@ -244,11 +269,14 @@
 <div class="menu-bottom-second">
   <button id="zoom-in-btn">+</button>
   <button id="zoom-out-btn">-</button>
+  <span>&nbsp;&nbsp;&nbsp;</span>
+  <button id="prev-btn"><</button>
+  <button id="next-btn">></button>
 </div>
 
 <div class="menu-bottom">
-  <button id="prev-btn">上一個點</button>
-  <button id="next-btn">下一個點</button>
+  <button id="calculate-btn">計算</button>
+  <span>&nbsp;&nbsp;&nbsp;</span>
   <button id="reset-btn">重置</button>
 </div>
 
@@ -298,6 +326,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const prevBtn = document.getElementById('prev-btn');
           const nextBtn = document.getElementById('next-btn');
           const resetBtn = document.getElementById('reset-btn');
+          const calculateBtn = document.getElementById('calculate-btn');
           const zoomInBtn = document.getElementById('zoom-in-btn');
           const zoomOutBtn = document.getElementById('zoom-out-btn');
           
@@ -324,6 +353,7 @@ document.addEventListener('DOMContentLoaded', function() {
           
           // 初始化点
           function initPoints() {
+              // 先清除所有內容，包括點和連接線
               neckContainer.innerHTML = '';
               points = [];
               
@@ -331,6 +361,9 @@ document.addEventListener('DOMContentLoaded', function() {
                   const point = document.createElement('div');
                   point.className = 'point';
                   point.id = `point-${index}`;
+                  
+                  // 添加白色數字
+                  point.textContent = index + 1;
                   
                   // 根据容器大小计算点的位置
                   point.style.left = `${pos.x * 100}%`;
@@ -365,8 +398,11 @@ document.addEventListener('DOMContentLoaded', function() {
               });
               
               currentPointIndex = index;
-              currentPointElement.textContent = index + 1;
+              if (currentPointElement) {
+                  currentPointElement.textContent = index + 1;
+              }
               
+              // 根據當前點的位置設定按鈕狀態
               if (index === 0) {
                   prevBtn.disabled = true;
               } else {
@@ -374,12 +410,14 @@ document.addEventListener('DOMContentLoaded', function() {
               }
               
               if (index === points.length - 1) {
-                  nextBtn.textContent = '完成';
+                  nextBtn.disabled = true;
               } else {
-                  nextBtn.textContent = '下一個點';
+                  nextBtn.disabled = false;
               }
               
-              statusElement.textContent = `請拖動第 ${index + 1} 個點`;
+              if (statusElement) {
+                  statusElement.textContent = `請拖動第 ${index + 1} 個點`;
+              }
           }
           
           // 开始拖拽点
@@ -438,11 +476,6 @@ document.addEventListener('DOMContentLoaded', function() {
           nextBtn.addEventListener('click', function() {
               if (currentPointIndex < points.length - 1) {
                   setDraggablePoint(currentPointIndex + 1);
-              } else {
-                  // 完成所有点的拖拽
-                  alert("點選完成");
-                  statusElement.textContent = "所有點已完成拖動！";
-                  nextBtn.disabled = true;
               }
           });
           
@@ -450,7 +483,6 @@ document.addEventListener('DOMContentLoaded', function() {
           prevBtn.addEventListener('click', function() {
               if (currentPointIndex > 0) {
                   setDraggablePoint(currentPointIndex - 1);
-                  nextBtn.disabled = false;
               }
           });
           
@@ -465,7 +497,93 @@ document.addEventListener('DOMContentLoaded', function() {
               if (statusElement) {
                   statusElement.textContent = "已重置，請拖動第一個點";
               }
+              // 清除連接線
+              clearConnectionLines();
           });
+          
+          // 計算按鈕
+          calculateBtn.addEventListener('click', function() {
+              calculateDistances();
+          });
+
+          // 清除連接線
+          function clearConnectionLines() {
+              const existingLines = neckContainer.querySelectorAll('.connection-line');
+              existingLines.forEach(line => line.remove());
+          }
+
+          // 計算距離和繪製連接線
+          function calculateDistances() {
+              // 清除之前的連接線
+              clearConnectionLines();
+
+              const distances = [];
+              const angles = [];
+              const results = [];
+
+              // 計算每兩個相鄰點之間的距離、角度並繪製連接線
+              for (let i = 0; i < points.length - 1; i++) {
+                  const point1 = points[i];
+                  const point2 = points[i + 1];
+
+                  // 直接從點的 style 屬性獲取位置（這些是相對於容器的實際位置）
+                  const x1 = parseFloat(point1.style.left) || (parseFloat(point1.style.left.replace('%', '')) / 100 * neckContainer.offsetWidth);
+                  const y1 = parseFloat(point1.style.top) || (parseFloat(point1.style.top.replace('%', '')) / 100 * neckContainer.offsetHeight);
+                  const x2 = parseFloat(point2.style.left) || (parseFloat(point2.style.left.replace('%', '')) / 100 * neckContainer.offsetWidth);
+                  const y2 = parseFloat(point2.style.top) || (parseFloat(point2.style.top.replace('%', '')) / 100 * neckContainer.offsetHeight);
+
+                  // 轉換百分比為像素值
+                  const actualX1 = point1.style.left.includes('%') ? (parseFloat(point1.style.left) / 100) * neckContainer.offsetWidth : parseFloat(point1.style.left);
+                  const actualY1 = point1.style.top.includes('%') ? (parseFloat(point1.style.top) / 100) * neckContainer.offsetHeight : parseFloat(point1.style.top);
+                  const actualX2 = point2.style.left.includes('%') ? (parseFloat(point2.style.left) / 100) * neckContainer.offsetWidth : parseFloat(point2.style.left);
+                  const actualY2 = point2.style.top.includes('%') ? (parseFloat(point2.style.top) / 100) * neckContainer.offsetHeight : parseFloat(point2.style.top);
+
+                  // 計算實際距離（以原始尺寸為基準）
+                  const actualDistance = Math.sqrt(Math.pow(actualX2 - actualX1, 2) + Math.pow(actualY2 - actualY1, 2));
+                  distances.push(actualDistance);
+
+                  // 計算角度（相對於水平軸的角度，以度為單位）
+                  const angleRadians = Math.atan2(actualY2 - actualY1, actualX2 - actualX1);
+                  const angleDegrees = angleRadians * 180 / Math.PI;
+                  // 將負角度轉換為正角度（0-360度範圍）
+                  const normalizedAngle = angleDegrees < 0 ? angleDegrees + 360 : angleDegrees;
+                  angles.push(normalizedAngle);
+
+                  // 繪製連接線（使用容器內的實際位置）
+                  drawLine(actualX1, actualY1, actualX2, actualY2);
+
+                  // 準備結果文字
+                  results.push(`點${i + 1}到點${i + 2}: ${actualDistance.toFixed(2)}px, 角度: ${normalizedAngle.toFixed(1)}°`);
+              }
+
+              // 顯示計算結果
+              alert("計算結果:\n" + results.join('\n'));
+          }
+
+          // 繪製連接線
+          function drawLine(x1, y1, x2, y2) {
+              const line = document.createElement('div');
+              line.className = 'connection-line';
+
+              // 調整到點的中心位置（點的大小是20px，所以中心偏移10px）
+              const centerX1 = x1 + 10;
+              const centerY1 = y1 + 10;
+              const centerX2 = x2 + 10;
+              const centerY2 = y2 + 10;
+
+              // 計算線條長度和角度
+              const length = Math.sqrt(Math.pow(centerX2 - centerX1, 2) + Math.pow(centerY2 - centerY1, 2));
+              const angle = Math.atan2(centerY2 - centerY1, centerX2 - centerX1) * 180 / Math.PI;
+
+              // 設定線條樣式
+              line.style.left = centerX1 + 'px';
+              line.style.top = centerY1 + 'px';
+              line.style.width = length + 'px';
+              line.style.transform = `rotate(${angle}deg)`;
+
+              // 添加到容器
+              neckContainer.appendChild(line);
+          }
           
           // 縮放功能
           function applyScale(scale) {
